@@ -19,7 +19,6 @@ import { formatCurrency } from '@/data/dashboard'
 import { allSales } from '@/data/sales'
 import { addTransaction } from '@/data/financial-transactions'
 import { saveCartState, loadCartState, clearCartState, holdSale, getHeldSales, removeHeldSale } from '@/lib/pos-utils'
-import { cn } from '@/lib/utils'
 import type { Product, CartItem, POSCustomer, PackagingConfig, PaymentMethod, HeldSale } from '@/types'
 
 const DEFAULT_CUSTOMER: POSCustomer = { id: 'cust-0', name: 'Walk-in Customer', phone: '' }
@@ -411,7 +410,6 @@ export default function POSPage() {
           onOpenCart={() => setCartOpen(true)}
           onQuickCash={handleQuickCash}
           onQuickComplete={handleQuickComplete}
-          onHoldSale={handleHoldSale}
           onClearCart={handleClearCart}
           onOpenHeld={() => setShowHeld(true)}
           searchInputRef={searchInputRef}

@@ -18,7 +18,6 @@ interface BottomDockProps {
   onOpenCart: () => void
   onQuickCash: () => void
   onQuickComplete: () => void
-  onHoldSale: () => void
   onClearCart: () => void
   onOpenHeld: () => void
   searchInputRef?: React.RefObject<HTMLInputElement | null>
@@ -28,13 +27,13 @@ export default function BottomDock({
   searchValue, onSearchChange, onBarcodeMatch,
   cartItems, grandTotal, itemCount, customer, discount, heldCount,
   onOpenCart, onQuickCash, onQuickComplete,
-  onHoldSale, onClearCart, onOpenHeld,
+  onClearCart, onOpenHeld,
   searchInputRef: externalRef,
 }: BottomDockProps) {
   const internalRef = useRef<HTMLInputElement>(null)
   const inputRef = externalRef || internalRef
   const [confirming, setConfirming] = useState(false)
-  const confirmTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const confirmTimerRef = useRef<number | undefined>(undefined)
 
   const hasItems = cartItems.length > 0
   const isWalkIn = customer.id === 'cust-0'
