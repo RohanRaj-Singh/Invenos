@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Stethoscope, ArrowRight, Phone, Calendar, Users, Search, Plus, X, User, Droplets
+  Stethoscope, ArrowRight, Phone, Calendar, Users, Search, Plus, X, User
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

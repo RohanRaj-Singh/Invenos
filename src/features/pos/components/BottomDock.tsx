@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { ShoppingCart, Search, ScanLine, X, CheckCircle2, Clock, Pause, Trash2 } from 'lucide-react'
+import { ShoppingCart, Search, ScanLine, X, CheckCircle2, Clock, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency } from '@/data/dashboard'
 import { getProductByBarcode } from '@/data/pos'

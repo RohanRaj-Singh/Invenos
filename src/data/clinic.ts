@@ -1,4 +1,4 @@
-import type { Patient, Visit, Treatment, Prescription, Payment, Sale, CartItem } from '@/types'
+import type { Patient, Visit, Treatment, Prescription, Payment, CartItem } from '@/types'
 import {
   generatedPatients,
   generatedVisits,
@@ -117,7 +117,6 @@ export function addVisit(data: {
   paymentMethod?: string
   saleId: string
 }): Visit {
-  const visitTypes = ['General Consultation', 'Follow-up', 'Medication Review', 'Annual Checkup', 'Vaccination', 'Lab Results Review', 'Specialist Referral']
   const id = `v-${String(nextVisitId).padStart(3, '0')}`
   nextVisitId++
   const today = new Date().toISOString().split('T')[0]
@@ -125,7 +124,7 @@ export function addVisit(data: {
     id,
     patientId: data.patient.id,
     visitDate: today,
-    type: data.diagnosis ? 'General Consultation' : 'Follow-up',
+    type: 'General Consultation',
     doctor: 'Dr. Ahmed',
     diagnosis: data.diagnosis,
     notes: data.notes,
