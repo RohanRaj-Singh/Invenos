@@ -641,6 +641,17 @@ export function generateSaleSummaries(allSales: Sale[], patients: Patient[]): Sa
   }))
 }
 
+// ═══ Link patients to contacts by name ─────
+export function linkPatientsToContacts(patients: Patient[], contacts: { id: string; name: string; roles: string[] }[]) {
+  const patientContacts = contacts.filter((c) => c.roles.includes('patient'))
+  for (const patient of patients) {
+    const match = patientContacts.find(
+      (c) => c.name.toLowerCase().split(' ')[0] === patient.name.toLowerCase().split(' ')[0]
+    )
+    if (match) patient.contactId = match.id
+  }
+}
+
 // ═══ ALL EXPORTS ────────────────────────────
 export const generatedProducts = generateProducts()
 export const generatedCategories = generateCategories(generatedProducts)

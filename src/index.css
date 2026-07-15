@@ -25,64 +25,91 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-danger: var(--danger);
 }
 
-/* CSS variables — Light */
+/* ── Light Theme ── */
 :root {
-  --background: #ffffff;
-  --foreground: #09090b;
-  --card: #ffffff;
-  --card-foreground: #09090b;
+  /* ── Base layers (3-level depth) ── */
+  --background: #f1f2f6;          /* Cool off-white — calm page bg */
+  --foreground: #0a0b0e;          /* Near-black, high readability */
+  --card: #ffffff;                 /* Pure white — floats above bg */
+  --card-foreground: #0a0b0e;
   --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: #2563eb;
+  --popover-foreground: #0a0b0e;
+
+  /* ── Interactive ── */
+  --primary: #2563eb;              /* Blue-600 — focused accent for CTAs, links */
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --destructive: #ef4444;
+  --secondary: #e6e7ee;
+  --secondary-foreground: #0a0b0e;
+  --muted: #e8e9f0;
+  --muted-foreground: #6b6e7e;     /* ~5.5:1 on muted, ~7:1 on card — easy reading */
+  --accent: #e6e7ee;
+  --accent-foreground: #0a0b0e;
+  --destructive: #dc2626;
   --destructive-foreground: #fafafa;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
+
+  /* ── Boundaries ── */
+  --border: #d0d2de;               /* Subtle but visible on all surfaces */
+  --input: #d0d2de;
   --ring: #2563eb;
 
-  /* Sidebar specific */
-  --sidebar: #f8f8fa;
-  --sidebar-foreground: #27272a;
-  --sidebar-accent: #e4e4e7;
-  --sidebar-accent-foreground: #18181b;
+  /* ── Sidebar (distinct panel, clearly different from page) ── */
+  --sidebar: #e4e5ec;
+  --sidebar-foreground: #1d1f26;
+  --sidebar-accent: #cccfdb;       /* Active/hover state */
+  --sidebar-accent-foreground: #0a0b0e;
+
+  /* ── Semantic status colors ── */
+  --success: #16a34a;
+  --warning: #d97706;
+  --info: #0284c7;
+  --danger: #dc2626;
 }
 
-/* CSS variables — Dark */
+/* ── Dark Theme ── */
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #121215;
-  --card-foreground: #fafafa;
-  --popover: #121215;
-  --popover-foreground: #fafafa;
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --secondary: #1a1a1e;
-  --secondary-foreground: #fafafa;
-  --muted: #1a1a1e;
-  --muted-foreground: #a1a1aa;
-  --accent: #1a1a1e;
-  --accent-foreground: #fafafa;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #3b82f6;
+  /* ── Base layers (3-level depth) ── */
+  --background: #0c0d12;           /* Deep charcoal — not pure black, eye-friendly */
+  --foreground: #ebebec;           /* Soft off-white — reduces glare */
+  --card: #15161d;                 /* Slightly raised from page */
+  --card-foreground: #ebebec;
+  --popover: #15161d;
+  --popover-foreground: #ebebec;
 
-  /* Sidebar specific */
-  --sidebar: #0c0c0f;
-  --sidebar-foreground: #d4d4d8;
-  --sidebar-accent: #18181b;
-  --sidebar-accent-foreground: #fafafa;
+  /* ── Interactive ── */
+  --primary: #5b92f5;              /* Comfortable blue — visible but not harsh */
+  --primary-foreground: #0c0d12;
+  --secondary: #191a23;
+  --secondary-foreground: #ebebec;
+  --muted: #191a23;
+  --muted-foreground: #9296a5;     /* ~5.7:1 — good readability */
+  --accent: #191a23;
+  --accent-foreground: #ebebec;
+  --destructive: #f87171;
+  --destructive-foreground: #0c0d12;
+
+  /* ── Boundaries ── */
+  --border: #1d1e29;               /* Visible but calm — no harsh lines */
+  --input: #1d1e29;
+  --ring: #5b92f5;
+
+  /* ── Sidebar (recedes behind content — deeper than page bg) ── */
+  --sidebar: #08090e;
+  --sidebar-foreground: #b6b9ce;
+  --sidebar-accent: #171823;
+  --sidebar-accent-foreground: #ebebec;
+
+  /* ── Semantic status colors ── */
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --info: #38bdf8;
+  --danger: #f87171;
 }
 
 /* Base styles */

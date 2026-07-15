@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Receipt, ExternalLink, Banknote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -5,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getSaleById, getSalePayments, getPatientName } from '@/data/sales'
 import { mockVisits } from '@/data/clinic'
+import { mockContacts } from '@/data/contacts'
 import { formatCurrency } from '@/data/dashboard'
 import { cn } from '@/lib/utils'
+import RecordPaymentDialog from '@/features/payments/components/RecordPaymentDialog'
 import type { SaleSource, PaymentStatus } from '@/types'
 
 const sourceConfig: Record<SaleSource, { label: string; cls: string }> = {
@@ -24,6 +27,7 @@ const payCfg: Record<PaymentStatus, { label: string; cls: string }> = {
 export default function SaleDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [showPayment, setShowPayment] = useState(false)
   const sale = getSaleById(id || '')
 
   if (!sale) {
@@ -49,13 +53,14 @@ export default function SaleDetailPage() {
     : null
 
   return (
+    <>
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <button onClick={() => navigate('/sales')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="size-4" />
           <span>Back to sales</span>
         </button>
-        <Button variant="outline" size="sm" className="gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowPayment(true)}>
           <Banknote className="size-3.5" />
           Record Payment
         </Button>
@@ -188,7 +193,12 @@ export default function SaleDetailPage() {
         </CardContent>
       </Card>
     </div>
-  )
+      <RecordPaymentDialog open={showPayment} onClose={() => setShowPayment(false)}
+        contact={sale.patientId ? mockContacts.find((c) => c.id === sale.patientId) : mockContacts.find((c) => sale.customerName?.toLowerCase().includes(c.name.toLowerCase()))}
+        direction="in" linkedSaleId={sale.id} maxAmount={sale.outstandingBalance}
+        onSuccess={() => setShowPayment(false)} />
+    </>)
+
 }
 
 function StatCard({ label, value, bold, positive, negative }: { label: string; value: string; bold?: boolean; positive?: boolean; negative?: boolean }) {

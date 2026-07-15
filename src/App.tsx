@@ -8,6 +8,7 @@ import ProductDetailsPage from '@/features/inventory/ProductDetailsPage'
 import SalesListPage from '@/features/sales/SalesListPage'
 import POSPage from '@/features/pos/POSPage'
 import SaleDetailPage from '@/features/sales/SaleDetailPage'
+import PaymentsListPage from '@/features/payments/PaymentsListPage'
 import ContactsListPage from '@/features/contacts/ContactsListPage'
 import ContactDetailPage from '@/features/contacts/ContactDetailPage'
 import AddContactPage from '@/features/contacts/AddContactPage'
@@ -31,7 +32,7 @@ export default function App() {
           <Route path="/contacts" element={<ContactsListPage />} />
           <Route path="/contacts/add" element={<AddContactPage />} />
           <Route path="/contacts/:id" element={<ContactDetailPage />} />
-          <Route path="/payments" element={<PlaceholderPage />} />
+          <Route path="/payments" element={<PaymentsListPage />} />
           <Route path="/reports" element={<PlaceholderPage />} />
           <Route path="/clinic" element={<ClinicPage />} />
           <Route path="/clinic/patient/:id" element={<PatientProfilePage />} />

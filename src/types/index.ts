@@ -57,6 +57,7 @@ export interface Contact {
   address: string
   openingBalance: number
   balanceType: 'receivable' | 'payable'
+  currentBalance: number       // source of truth: positive = owes us, negative = we owe them
   notes?: string
   createdAt: string
   updatedAt: string
@@ -79,14 +80,14 @@ export interface ContactPayment {
   direction: 'in' | 'out'
   date: string
   amount: number
-  method: 'cash' | 'card' | 'transfer'
+  method: PaymentMethod
   reference: string
   notes?: string
 }
 
 // ── Patient / Clinic ──
 export interface Patient {
-  id: string; name: string; phone: string; address: string
+  id: string; contactId?: string; name: string; phone: string; address: string
   gender: 'male' | 'female'; age: number; registrationDate: string
   bloodGroup?: string; avatar?: string; lastVisit?: string
 }
@@ -189,6 +190,47 @@ export interface POSCustomer {
   id: string; name: string; phone: string
 }
 
+export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'easypaisa' | 'jazzcash'
+
+export type FinancialTxnType = 'invoice' | 'collection' | 'advance' | 'refund' | 'adjustment' | 'payout'
+
+export interface FinancialTransaction {
+  id: string
+  contactId: string
+  direction: 'in' | 'out'
+  type: FinancialTxnType
+  date: string
+  amount: number
+  method: PaymentMethod
+  reference: string
+  description?: string
+  linkedSaleId?: string
+  createdBy: string
+  createdAt: string
+}
+
+// DEPRECATED — kept for backward compat during migration
+export type LedgerEntryType = 'invoice' | 'payment' | 'advance' | 'refund' | 'adjustment' | 'write_off' | 'credit_note'
+export interface LedgerEntry {
+  id: string; contactId: string; type: LedgerEntryType; date: string
+  reference: string; description: string; debit: number; credit: number
+  runningBalance: number; method?: PaymentMethod; linkedSaleId?: string
+  createdBy: string; createdAt: string
+}
+export interface Payment { id: string; saleId: string; date: string; amount: number; method: PaymentMethod; reference: string; notes?: string }
+export interface ContactTransaction { id: string; contactId: string; type: 'sale' | 'purchase' | 'payment_in' | 'payment_out' | 'return'; date: string; amount: number; reference: string; description: string }
+export interface ContactPayment { id: string; contactId: string; direction: 'in' | 'out'; date: string; amount: number; method: PaymentMethod; reference: string; notes?: string }
+
+export interface HeldSale {
+  id: string
+  customer: POSCustomer
+  items: CartItem[]
+  discount: number
+  subtotal: number
+  grandTotal: number
+  heldAt: string
+}
+
 // ── Sale ──
 export type SaleSource = 'pos' | 'clinic' | 'manual'
 export type PaymentStatus = 'paid' | 'partial' | 'unpaid'
@@ -204,7 +246,7 @@ export interface Sale {
 
 export interface Payment {
   id: string; saleId: string; date: string; amount: number
-  method: 'cash' | 'card' | 'transfer'; reference: string; notes?: string
+  method: PaymentMethod; reference: string; notes?: string
 }
 
 export interface SaleSummary {

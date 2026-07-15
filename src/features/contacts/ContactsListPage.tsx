@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Plus, Users, ArrowRight, Phone, Building2, User } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { mockContacts, getContactBalance } from '@/data/contacts'
+import { mockContacts } from '@/data/contacts'
 import { formatCurrency } from '@/data/dashboard'
 import { RoleBadgeList } from './components/RoleBadge'
 import { cn } from '@/lib/utils'
@@ -88,7 +88,7 @@ export default function ContactsListPage() {
               <tr><td colSpan={7} className="text-center py-16 text-sm text-muted-foreground"><Users className="size-8 mx-auto mb-2 text-muted-foreground/30" /><span>No contacts found.</span></td></tr>
             ) : (
               filtered.map((contact) => {
-                const balance = getContactBalance(contact)
+                const balance = contact.currentBalance || 0
                 const isPerson = contact.type === 'person'
                 return (
                   <tr key={contact.id} onClick={() => navigate(`/contacts/${contact.id}`)}
@@ -128,7 +128,7 @@ export default function ContactsListPage() {
           <div className="text-center py-16 text-sm text-muted-foreground"><Users className="size-10 mx-auto mb-2 text-muted-foreground/30" /><span>No contacts found.</span></div>
         ) : (
           filtered.map((contact) => {
-            const balance = getContactBalance(contact)
+            const balance = contact.currentBalance || 0
             const isPerson = contact.type === 'person'
             return (
               <button key={contact.id} onClick={() => navigate(`/contacts/${contact.id}`)} className="w-full text-left group">

@@ -43,6 +43,9 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
 
+  // Hide on POS page — the POS has its own dedicated bottom nav
+  if (location.pathname === '/sales/pos') return null
+
   const isActive = (href: string) => {
     if (href === '/') return location.pathname === '/'
     return location.pathname.startsWith(href)

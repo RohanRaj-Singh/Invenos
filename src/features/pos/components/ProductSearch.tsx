@@ -1,15 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, X, ScanLine } from 'lucide-react'
+import { getProductByBarcode } from '@/data/pos'
+import type { Product } from '@/types'
 
 interface ProductSearchProps {
   value: string
   onChange: (v: string) => void
   resultsCount: number
+  inputRef?: React.RefObject<HTMLInputElement | null>
+  onBarcodeMatch?: (product: Product) => void
 }
 
-export default function ProductSearch({ value, onChange, resultsCount }: ProductSearchProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
+export default function ProductSearch({ value, onChange, resultsCount, inputRef: externalRef, onBarcodeMatch }: ProductSearchProps) {
+  const internalRef = useRef<HTMLInputElement>(null)
+  const inputRef = externalRef || internalRef
   const [focused, setFocused] = useState(false)
+
+  // Auto-focus on mount
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   // Cmd+K / Ctrl+K to focus
   useEffect(() => {
@@ -21,14 +31,22 @@ export default function ProductSearch({ value, onChange, resultsCount }: Product
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [inputRef])
+
+  // Barcode simulation: if input is exactly 13 digits (standard barcode length), auto-lookup
+  useEffect(() => {
+    const cleaned = value.trim()
+    if (cleaned.length >= 8 && /^\d+$/.test(cleaned) && onBarcodeMatch) {
+      const product = getProductByBarcode(cleaned)
+      if (product) {
+        onBarcodeMatch(product)
+        onChange('')
+      }
+    }
+  }, [value, onBarcodeMatch])
 
   return (
-    <div
-      className={`relative transition-all duration-150 ${
-        focused ? 'ring-2 ring-primary/30 rounded-xl' : ''
-      }`}
-    >
+    <div className={`relative transition-all duration-150 ${focused ? 'ring-2 ring-primary/30 rounded-xl' : ''}`}>
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <input
