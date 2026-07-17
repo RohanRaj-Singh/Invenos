@@ -31,11 +31,11 @@ export default function AppLayout() {
       {/* Mobile sidebar drawer */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border transform transition-transform duration-200 ease-in-out md:hidden',
+          'fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-background border-r border-border transform transition-transform duration-200 ease-in-out md:hidden',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <Sidebar />
+        <Sidebar mobile onClose={() => setSidebarOpen(false)} />
       </div>
 
       {/* Desktop sidebar */}

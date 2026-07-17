@@ -26,14 +26,22 @@ const iconMap: Record<string, LucideIcon> = {
   Stethoscope,
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobile?: boolean
+  onClose?: () => void
+}
+
+export default function Sidebar({ mobile, onClose }: SidebarProps) {
   const [modulesOpen, setModulesOpen] = useState(false)
   const location = useLocation()
 
   const isModuleActive = modules.some((m) => location.pathname === m.href)
 
   return (
-    <aside className="hidden md:flex md:flex-col md:w-60 lg:w-64 h-screen border-r border-border bg-sidebar shrink-0">
+    <aside className={cn(
+      mobile ? 'flex flex-col w-64' : 'hidden md:flex md:flex-col md:w-60 lg:w-64',
+      'h-screen border-r border-border bg-sidebar shrink-0'
+    )}>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 h-14 border-b border-border">
         <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground">
@@ -51,6 +59,7 @@ export default function Sidebar() {
               key={item.href}
               to={item.href}
               end={item.href === '/'}
+              onClick={onClose}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -100,6 +109,7 @@ export default function Sidebar() {
                 <NavLink
                   key={mod.href}
                   to={mod.href}
+                  onClick={onClose}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                     isActive
