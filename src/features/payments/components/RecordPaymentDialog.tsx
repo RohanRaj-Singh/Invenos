@@ -8,6 +8,7 @@ import { addTransaction } from '@/data/financial-transactions'
 import { cn } from '@/lib/utils'
 import type { PaymentMethod, Contact } from '@/types'
 import { toast } from 'sonner'
+import { getCurrentUserName } from '@/data/users'
 
 const methods: { id: PaymentMethod; label: string; icon: typeof Banknote }[] = [
   { id: 'cash', label: 'Cash', icon: Banknote },
@@ -62,7 +63,7 @@ export default function RecordPaymentDialog({ open, onClose, contact: presetCont
         method: selectedMethod,
         description: note || `Payment ${direction === 'in' ? 'received' : 'sent'}`,
         linkedSaleId,
-        createdBy: 'Dr. Ahmed',
+        createdBy: getCurrentUserName(),
       })
       toast.success(`${direction === 'in' ? 'Payment received' : 'Payment sent'} — ${formatCurrency(finalAmount)}`)
       setProcessing(false)

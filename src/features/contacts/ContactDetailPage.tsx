@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Building2, Phone, Mail, CreditCard, MapPin, ShoppingCart, Package, Banknote, Activity, ClipboardList, BookOpen, Plus } from 'lucide-react'
+import { ArrowLeft, User, Building2, Phone, Mail, CreditCard, MapPin, ShoppingCart, Package, Banknote, Activity, ClipboardList, BookOpen, Plus, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -196,13 +196,22 @@ export default function ContactDetailPage() {
                   {transactions.map((txn) => (
                     <div key={txn.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className={cn('size-8 rounded-lg flex items-center justify-center', txn.type === 'sale' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10' : txn.type === 'purchase' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10')}>
-                          {txn.type === 'sale' ? <ShoppingCart className="size-4" /> : txn.type === 'purchase' ? <Package className="size-4" /> : <Banknote className="size-4" />}
+                        <div className={cn('size-8 rounded-lg flex items-center justify-center',
+                          txn.type === 'sale' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10' :
+                          txn.type === 'purchase' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10' :
+                          txn.type === 'return' ? 'bg-orange-50 text-orange-600 dark:bg-orange-500/10' :
+                          'bg-amber-50 text-amber-600 dark:bg-amber-500/10')}>
+                          {txn.type === 'sale' ? <ShoppingCart className="size-4" /> :
+                           txn.type === 'purchase' ? <Package className="size-4" /> :
+                           txn.type === 'return' ? <RotateCcw className="size-4" /> :
+                           <Banknote className="size-4" />}
                         </div>
                         <div><div className="text-sm font-medium text-foreground capitalize">{txn.type.replace('_', ' ')}</div><div className="text-xs text-muted-foreground">{txn.date} · {txn.reference} · {txn.description}</div></div>
                       </div>
-                      <span className={cn('text-sm font-semibold', (txn.type === 'sale' || txn.type === 'payment_in') ? 'text-emerald-600' : 'text-red-600')}>
-                        {(txn.type === 'sale' || txn.type === 'payment_in') ? '+' : '-'}{formatCurrency(txn.amount)}
+                      <span className={cn('text-sm font-semibold',
+                        txn.type === 'sale' || txn.type === 'payment_in' ? 'text-emerald-600' :
+                        txn.type === 'return' ? 'text-orange-600' : 'text-red-600')}>
+                        {txn.type === 'sale' || txn.type === 'payment_in' ? '+' : txn.type === 'return' ? '−' : '-'}{formatCurrency(txn.amount)}
                       </span>
                     </div>
                   ))}

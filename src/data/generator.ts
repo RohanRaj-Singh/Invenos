@@ -10,7 +10,9 @@ import type {
   Product, ProductCategory, ProductPurchase, InventoryTransaction,
   Patient, Visit, Treatment, Prescription, Payment, POSCustomer,
   ActivityEvent, DashboardStats, Sale, CartItem, SaleSummary,
+  SellingUnit, PurchaseConfig,
 } from '@/types'
+import { findUnitByName } from '@/lib/units'
 
 // ═══ Seeded pseudo-random ────────────────────
 const seed = (s: number) => () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646 }
@@ -160,21 +162,65 @@ export function generateProducts(): Product[] {
     if (stockIdx === 0) { baseStock = 0; status = 'out-of-stock' }
     else if (stockIdx === 1) { baseStock = randInt(1, Math.max(1, lt - 1)); status = 'low-stock' }
     else { baseStock = randInt(lt * 2, lt * 4); status = 'in-stock' }
+
+    // ── Derive baseUnitId from def.baseUnit string ──
+    const unitDef = findUnitByName(def.baseUnit)
+    const baseUnitId = unitDef?.id || 'piece'
+
+    // ── Legacy packaging for backward compat ──
     const largestQty = def.packaging.reduce((m, p) => Math.max(m, p.quantity), 0)
     const packaging = def.packaging.map((p) => ({
       name: p.name, quantity: p.quantity,
       purchasePrice: Math.round(def.purchaseCost * (p.quantity / largestQty)),
       salePrice: Math.round(def.salePrice * p.quantity),
     }))
-    return {
-      id: `prod-${String(i+1).padStart(3,'0')}`, name: def.name,
-      sku: `${def.skuPrefix}-${String(i+1).padStart(3,'0')}`, barcode: `8901${String(i+1).padStart(9,'0')}`,
-      category: def.category, description: def.description,
-      trackInventory: true, baseUnit: def.baseUnit, packaging,
-      stockQuantity: baseStock, lowStockThreshold: lt, status,
-      createdAt: daysAgo(randInt(90,540)), updatedAt: daysAgo(randInt(0,7)),
-      supplier: def.supplier, location: pick(['Shelf A-1','Shelf A-2','Shelf A-3','Shelf B-1','Shelf B-2','Shelf C-1','Shelf C-2','Shelf D-1','Shelf D-2','Shelf E-1','Shelf E-2','Store Back','Store Room','Display Front']),
+
+    // ── NEW: Selling units ──
+    const sellingUnits: SellingUnit[] = def.packaging.map((p, idx) => ({
+      id: `su-${String(i+1).padStart(3,'0')}-${idx}`,
+      name: p.name,
+      unitId: baseUnitId,
+      quantity: p.quantity,
+      salePrice: Math.round(def.salePrice * p.quantity),
+      isDefault: idx === 0,
+    }))
+
+    // ── NEW: Purchase config (derived from purchaseCost = cost of largest packaging) ──
+    const largestPkg = def.packaging.reduce((max, p) => p.quantity > max.quantity ? p : max, def.packaging[0])
+    const purchaseConfig: PurchaseConfig = {
+      unitId: baseUnitId,
+      quantity: largestPkg.quantity,
+      cost: def.purchaseCost,
+      name: largestPkg.name,
     }
+
+    const prodId = `prod-${String(i+1).padStart(3,'0')}`
+    return {
+      id: prodId,
+      name: def.name,
+      sku: `${def.skuPrefix}-${String(i+1).padStart(3,'0')}`,
+      barcode: `8901${String(i+1).padStart(9,'0')}`,
+      category: def.category,
+      description: def.description,
+      trackInventory: true,
+
+      // NEW fields
+      baseUnitId,
+      purchaseConfig,
+      sellingUnits,
+
+      // OLD fields (backward compat)
+      baseUnit: def.baseUnit as Product['baseUnit'],
+      packaging,
+
+      stockQuantity: baseStock,
+      lowStockThreshold: lt,
+      status,
+      createdAt: daysAgo(randInt(90,540)),
+      updatedAt: daysAgo(randInt(0,7)),
+      supplier: def.supplier,
+      location: pick(['Shelf A-1','Shelf A-2','Shelf A-3','Shelf B-1','Shelf B-2','Shelf C-1','Shelf C-2','Shelf D-1','Shelf D-2','Shelf E-1','Shelf E-2','Store Back','Store Room','Display Front']),
+    } as Product
   })
 }
 
@@ -577,8 +623,16 @@ export function generateTransactions(products: Product[], allSales: Sale[], purc
 export function generateDashboardStats(products: Product[], allSales: Sale[]): DashboardStats {
   const today = daysAgo(0)
   const yesterday = daysAgo(1)
-  const todayRev = allSales.filter((s) => s.date === today).reduce((sum, s) => sum + s.grandTotal, 0)
-  const yestRev = allSales.filter((s) => s.date === yesterday).reduce((sum, s) => sum + s.grandTotal, 0)
+
+  const todaySales = allSales.filter((s) => s.date === today && !s.invoiceNumber.startsWith('RET-'))
+  const todaySaleReturns = allSales.filter((s) => s.date === today && s.invoiceNumber.startsWith('RET-'))
+  const yestSales = allSales.filter((s) => s.date === yesterday && !s.invoiceNumber.startsWith('RET-'))
+
+  const todayRev = todaySales.reduce((sum, s) => sum + s.grandTotal, 0)
+  const todayReturnRev = todaySaleReturns.reduce((sum, s) => sum + s.grandTotal, 0)
+  const yestRev = yestSales.reduce((sum, s) => sum + s.grandTotal, 0)
+  const netSales = todayRev - todayReturnRev
+
   const salesTrend = yestRev > 0 ? Math.round(((todayRev - yestRev) / yestRev) * 100) : 12
   const lowStockItems = products.filter((p) => p.status === 'low-stock' || p.status === 'out-of-stock').length
   const stockValue = products.reduce((sum, p) => {
@@ -588,7 +642,28 @@ export function generateDashboardStats(products: Product[], allSales: Sale[]): D
   }, 0)
   const pendingPayments = allSales.reduce((sum, s) => sum + s.outstandingBalance, 0)
 
-  return { todaySales: todayRev, pendingPayments, stockValue, lowStockItems, salesTrend, paymentsTrend: -randInt(2, 12) }
+  // Purchase stats (from purchase bills)
+  const todayPurchases = 0 // Will be computed from purchaseBills
+  const todayPurchaseReturns = 0
+
+  return {
+    todaySales: todayRev,
+    todaySaleReturns: todayReturnRev,
+    netSales,
+    todayPurchases,
+    todayPurchaseReturns,
+    netPurchases: todayPurchases - todayPurchaseReturns,
+    pendingPayments,
+    stockValue,
+    lowStockItems,
+    salesTrend,
+    paymentsTrend: -randInt(2, 12),
+    refundsIssued: todayReturnRev,
+    refundsReceived: todayPurchaseReturns,
+    todayExpenses: 0,
+    thisMonthExpenses: 0,
+    totalExpenses: 0,
+  }
 }
 
 // ═══ Generate Recent Activity ───────────────
@@ -601,12 +676,17 @@ function daysAgoToHuman(dayOffset: number): string {
 }
 
 export function generateRecentActivity(allSales: Sale[]): ActivityEvent[] {
-  const recent = allSales.slice(0, 8)
-  return recent.map((sale, i) => {
+  const saleOnly = allSales.filter((s) => !s.invoiceNumber.startsWith('RET-'))
+  const returns = allSales.filter((s) => s.invoiceNumber.startsWith('RET-'))
+
+  const recent = saleOnly.slice(0, 5)
+  const recentReturns = returns.slice(0, 3)
+
+  const saleEvents: ActivityEvent[] = recent.map((sale, i) => {
     const daysOff = Math.floor((NOW.getTime() - new Date(sale.date + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24))
     const customerLabel = sale.customerName || sale.patientId || 'Customer'
     return {
-      id: `act-${i+1}`,
+      id: `act-${i + 1}`,
       type: i % 3 === 0 ? 'payment' : i % 4 === 0 ? 'purchase' : 'sale',
       title: i % 3 === 0 ? 'Payment Received' : i % 4 === 0 ? 'Purchase Recorded' : 'Sale Created',
       description: i % 3 === 0
@@ -619,6 +699,24 @@ export function generateRecentActivity(allSales: Sale[]): ActivityEvent[] {
       amount: sale.grandTotal,
     }
   })
+
+  const returnEvents: ActivityEvent[] = recentReturns.map((ret, i) => {
+    const daysOff = Math.floor((NOW.getTime() - new Date(ret.date + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24))
+    return {
+      id: `act-ret-${i + 1}`,
+      type: 'return',
+      title: 'Sale Return Recorded',
+      description: `Return ${ret.invoiceNumber} — ${ret.items.length} item${ret.items.length !== 1 ? 's' : ''} returned`,
+      timeAgo: daysAgoToHuman(daysOff),
+      timestamp: new Date(ret.date + 'T14:00:00'),
+      amount: ret.grandTotal,
+    }
+  })
+
+  // Merge, sort by timestamp descending
+  return [...saleEvents, ...returnEvents]
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    .slice(0, 8)
 }
 
 // ═══ Generate POS Customers ─────────────────
@@ -634,6 +732,7 @@ export function generateSaleSummaries(allSales: Sale[], patients: Patient[]): Sa
   const patientMap = new Map(patients.map((p) => [p.id, p.name]))
   return allSales.map((s) => ({
     id: s.id, invoiceNumber: s.invoiceNumber, source: s.source, date: s.date,
+    customerId: s.customerId,
     customerName: s.customerName,
     patientName: s.patientId ? patientMap.get(s.patientId) : undefined,
     itemCount: s.items.length, grandTotal: s.grandTotal,

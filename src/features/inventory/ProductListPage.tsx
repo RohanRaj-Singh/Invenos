@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import ProductFilters from './components/ProductFilters'
 import ProductTable from './components/ProductTable'
 import ProductCardView from './components/ProductCardView'
+import { computeCompletionStatus } from './components/CompletionBadge'
 import { mockProducts } from '@/data/inventory'
+import { formatCurrency } from '@/lib/format'
 import type { StockStatus } from '@/types'
 
 export default function ProductListPage() {
@@ -13,6 +15,7 @@ export default function ProductListPage() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [stockStatus, setStockStatus] = useState<StockStatus | 'all'>('all')
+  const [completionStatus, setCompletionStatus] = useState<'all' | 'complete' | 'incomplete'>('all')
 
   const filtered = useMemo(() => {
     return mockProducts.filter((p) => {
@@ -22,9 +25,24 @@ export default function ProductListPage() {
       }
       if (category !== 'all' && p.category !== category) return false
       if (stockStatus !== 'all' && p.status !== stockStatus) return false
+      if (completionStatus !== 'all') {
+        const status = computeCompletionStatus(p)
+        if (completionStatus === 'complete' && status !== 'complete') return false
+        if (completionStatus === 'incomplete' && status === 'complete') return false
+      }
       return true
     })
-  }, [search, category, stockStatus])
+  }, [search, category, stockStatus, completionStatus])
+
+  const totalStockValue = useMemo(() => {
+    return mockProducts.reduce((sum, p) => {
+      if (p.purchaseConfig) {
+        const costPerBase = p.purchaseConfig.cost / p.purchaseConfig.quantity
+        return sum + p.stockQuantity * costPerBase
+      }
+      return sum
+    }, 0)
+  }, [])
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5">
@@ -39,7 +57,7 @@ export default function ProductListPage() {
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Products</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {mockProducts.length} products across {new Set(mockProducts.map((p) => p.category)).size} categories
+            {mockProducts.length} products · Stock value: {formatCurrency(totalStockValue)}
           </p>
         </div>
         <Button
@@ -47,7 +65,7 @@ export default function ProductListPage() {
           size="sm"
           className="gap-1.5 shadow-sm h-9"
         >
-          <Plus className="size-4" />
+          <Plus className="size-3.5" />
           <span className="hidden sm:inline">Add Product</span>
         </Button>
       </div>
@@ -60,6 +78,8 @@ export default function ProductListPage() {
         onCategoryChange={setCategory}
         stockStatus={stockStatus}
         onStockStatusChange={setStockStatus}
+        completionStatus={completionStatus}
+        onCompletionStatusChange={setCompletionStatus}
       />
 
       {/* Results count */}

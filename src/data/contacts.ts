@@ -1,4 +1,6 @@
 import type { Contact, ContactTransaction, ContactPayment } from '@/types'
+import { allSales } from '@/data/sales'
+import { purchaseBills } from '@/data/purchases'
 
 export const mockContacts: Contact[] = [
   { id:'ct-001', type:'person', roles:['patient','customer'], name:'Muhammad Ali', phone:'0300-1234567', email:'m.ali@gmail.com', cnic:'35201-1234567-1', address:'House 12, Street 5, Gulberg, Lahore', openingBalance:4500, balanceType:'receivable', currentBalance:0, createdAt:'2025-06-15', updatedAt:'2026-06-20', lastActivity:'2026-06-22' },
@@ -69,7 +71,59 @@ export function getContactById(id: string): Contact | undefined {
 }
 
 export function getContactTransactions(contactId: string): ContactTransaction[] {
-  return mockContactTransactions.filter((t) => t.contactId === contactId)
+  const staticTxns = mockContactTransactions.filter((t) => t.contactId === contactId)
+
+  const contact = mockContacts.find((c) => c.id === contactId)
+  if (!contact) return staticTxns
+
+  const dynamicReturns: ContactTransaction[] = []
+
+  // Sale returns and sales for customer contacts — match by customerId or name
+  if (contact.roles.includes('customer') || contact.roles.includes('patient')) {
+    const relatedSales = allSales.filter(
+      (s) => s.customerId === contact.id ||
+        (!s.customerId && s.customerName?.toLowerCase().includes(contact.name.toLowerCase()))
+    )
+    relatedSales.forEach((s) => {
+      const isReturn = s.invoiceNumber.startsWith('RET-')
+      dynamicReturns.push({
+        id: `${isReturn ? 'ret' : 'sale'}-ctx-${s.id}`,
+        contactId: contact.id,
+        type: isReturn ? 'return' : 'sale',
+        date: s.date,
+        amount: isReturn ? -s.grandTotal : s.grandTotal,
+        reference: s.invoiceNumber,
+        description: isReturn
+          ? `Sale return — ${s.items.length} item${s.items.length !== 1 ? 's' : ''} returned`
+          : `Sale — ${s.items.length} item${s.items.length !== 1 ? 's' : ''}`,
+      })
+    })
+  }
+
+  // Purchase returns for supplier contacts
+  // Purchases and purchase returns for supplier contacts — match by supplierId or name
+  if (contact.roles.includes('supplier')) {
+    const relatedBills = purchaseBills.filter(
+      (b) => b.supplierId === contact.id ||
+        (b.supplierName.toLowerCase().includes(contact.name.toLowerCase()))
+    )
+    relatedBills.forEach((b) => {
+      const isReturn = b.invoiceRef.startsWith('PRET-')
+      dynamicReturns.push({
+        id: `${isReturn ? 'pret' : 'pur'}-ctx-${b.id}`,
+        contactId: contact.id,
+        type: isReturn ? 'return' : 'purchase',
+        date: b.date,
+        amount: isReturn ? -b.totalAmount : b.totalAmount,
+        reference: b.invoiceRef,
+        description: isReturn
+          ? `Purchase return — ${b.items.length} item${b.items.length !== 1 ? 's' : ''}`
+          : `Purchase — ${b.items.length} item${b.items.length !== 1 ? 's' : ''}`,
+      })
+    })
+  }
+
+  return [...staticTxns, ...dynamicReturns].sort((a, b) => b.date.localeCompare(a.date))
 }
 
 export function getContactPayments(contactId: string): ContactPayment[] {

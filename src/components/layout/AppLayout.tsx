@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import BottomNav from './BottomNav'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/features/auth/AuthContext'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -13,10 +14,21 @@ export default function AppLayout() {
     }
     return false
   })
+  const auth = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
   }, [dark])
+
+  useEffect(() => {
+    if (!auth.isAuthenticated) {
+      navigate('/login', { replace: true, state: { from: location } })
+    }
+  }, [auth.isAuthenticated, navigate, location])
+
+  if (!auth.isAuthenticated) return null
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

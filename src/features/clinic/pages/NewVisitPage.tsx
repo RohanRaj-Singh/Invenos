@@ -11,6 +11,7 @@ import { allSales } from '@/data/sales'
 import { formatCurrency } from '@/data/dashboard'
 import { addTransaction } from '@/data/financial-transactions'
 import { cn } from '@/lib/utils'
+import { getCurrentUserName } from '@/data/users'
 import AddMedicineDialog from '../components/AddMedicineDialog'
 import type { MedicineEntry } from '../components/AddMedicineDialog'
 
@@ -105,7 +106,7 @@ export default function NewVisitPage() {
       amountPaid,
       outstandingBalance: outstanding,
       paymentStatus: (amountPaid === 0 ? 'unpaid' : amountPaid >= grandTotal ? 'paid' : 'partial') as 'paid' | 'partial' | 'unpaid',
-      createdBy: 'Dr. Ahmed',
+      createdBy: getCurrentUserName(),
       customerName: undefined,
     }
     allSales.push(sale)
@@ -149,7 +150,7 @@ export default function NewVisitPage() {
         method: paymentMethod as any,
         description: `Clinic visit payment — ${diagnosis}`,
         linkedSaleId: sale.id,
-        createdBy: 'Dr. Ahmed',
+        createdBy: getCurrentUserName(),
       })
     }
 

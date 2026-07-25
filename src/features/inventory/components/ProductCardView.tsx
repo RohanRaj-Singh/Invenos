@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Package, ArrowRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import StockBadge from './StockBadge'
+import CompletionBadge from './CompletionBadge'
 import { formatCurrency } from '@/data/dashboard'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/types'
@@ -51,7 +52,10 @@ export default function ProductCardView({ products }: ProductCardViewProps) {
                       </code>
                     </div>
                   </div>
-                  <ArrowRight className="size-4 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors shrink-0 mt-1" />
+                  <div className="flex items-center gap-2 shrink-0 mt-1">
+                    <CompletionBadge product={product} size="sm" />
+                    <ArrowRight className="size-4 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 mb-3">

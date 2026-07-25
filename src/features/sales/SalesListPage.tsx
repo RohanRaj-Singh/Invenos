@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Receipt, Search, ShoppingCart, ArrowRight } from 'lucide-react'
+import { Receipt, Search, ShoppingCart, ArrowRight, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { saleSummaries } from '@/data/sales'
 import { formatCurrency } from '@/data/dashboard'
 import { cn } from '@/lib/utils'
+import { usePermission } from '@/features/auth/PermissionGuard'
 import type { SaleSource, PaymentStatus } from '@/types'
 
 const sourceConfig: Record<SaleSource, { label: string; cls: string }> = {
@@ -23,9 +24,13 @@ export default function SalesListPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filterSource, setFilterSource] = useState<SaleSource | 'all'>('all')
+  const canCreate = usePermission('sales', 'create')
+  const canProcessReturn = usePermission('sales', 'processReturn')
 
   const filtered = useMemo(() => {
     return saleSummaries.filter((s) => {
+      // Hide returns from main sales list
+      if (s.invoiceNumber.startsWith('RET-')) return false
       if (search) {
         const q = search.toLowerCase()
         const nameMatch = (s.customerName || s.patientName || '').toLowerCase().includes(q)
@@ -46,16 +51,27 @@ export default function SalesListPage() {
             <span className="text-xs font-semibold uppercase tracking-wider text-primary">Sales</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">All Sales</h1>
-          <p className="text-sm text-muted-foreground mt-1">{saleSummaries.length} transactions recorded</p>
+          <p className="text-sm text-muted-foreground mt-1">{saleSummaries.filter(s => !s.invoiceNumber.startsWith('RET-')).length} transactions recorded</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/sales/pos')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:bg-primary/90 transition-colors"
-          >
-            <ShoppingCart className="size-4" />
-            <span className="hidden sm:inline">Open POS</span>
-          </button>
+          {canProcessReturn && (
+            <button
+              onClick={() => navigate('/returns/sale')}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+            >
+              <RotateCcw className="size-4" />
+              <span className="hidden sm:inline">Return</span>
+            </button>
+          )}
+          {canCreate && (
+            <button
+              onClick={() => navigate('/sales/pos')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:bg-primary/90 transition-colors"
+            >
+              <ShoppingCart className="size-4" />
+              <span className="hidden sm:inline">Open POS</span>
+            </button>
+          )}
         </div>
       </div>
 

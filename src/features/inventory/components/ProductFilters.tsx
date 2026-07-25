@@ -4,13 +4,15 @@ import { cn } from '@/lib/utils'
 import { categories } from '@/data/inventory'
 import type { StockStatus } from '@/types'
 
-interface ProductFiltersProps {
+export interface ProductFiltersProps {
   search: string
   onSearchChange: (v: string) => void
   category: string
   onCategoryChange: (v: string) => void
   stockStatus: StockStatus | 'all'
   onStockStatusChange: (v: StockStatus | 'all') => void
+  completionStatus?: 'all' | 'complete' | 'incomplete'
+  onCompletionStatusChange?: (v: 'all' | 'complete' | 'incomplete') => void
 }
 
 export default function ProductFilters({
@@ -20,8 +22,10 @@ export default function ProductFilters({
   onCategoryChange,
   stockStatus,
   onStockStatusChange,
+  completionStatus = 'all',
+  onCompletionStatusChange,
 }: ProductFiltersProps) {
-  const hasFilters = search || category !== 'all' || stockStatus !== 'all'
+  const hasFilters = search || category !== 'all' || stockStatus !== 'all' || completionStatus !== 'all'
 
   return (
     <div className="space-y-3">
@@ -74,12 +78,22 @@ export default function ProductFilters({
         <StockChip label="Low Stock" active={stockStatus === 'low-stock'} onClick={() => onStockStatusChange('low-stock')} />
         <StockChip label="Out of Stock" active={stockStatus === 'out-of-stock'} onClick={() => onStockStatusChange('out-of-stock')} />
 
+        {onCompletionStatusChange && (
+          <>
+            <div className="w-px h-5 bg-border mx-1" />
+            <StockChip label="All" active={completionStatus === 'all'} onClick={() => onCompletionStatusChange('all')} />
+            <StockChip label="Complete" active={completionStatus === 'complete'} onClick={() => onCompletionStatusChange('complete')} />
+            <StockChip label="Needs Attention" active={completionStatus === 'incomplete'} onClick={() => onCompletionStatusChange('incomplete')} />
+          </>
+        )}
+
         {hasFilters && (
           <button
             onClick={() => {
               onSearchChange('')
               onCategoryChange('all')
               onStockStatusChange('all')
+              onCompletionStatusChange?.('all')
             }}
             className="text-xs text-muted-foreground hover:text-foreground ml-2 underline underline-offset-2"
           >

@@ -9,6 +9,8 @@ import {
   CreditCard,
   Users,
   Receipt,
+  Wallet,
+  Settings2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState } from 'react'
@@ -33,8 +35,10 @@ const iconMap: Record<string, LucideIcon> = {
 
 const moreItems = [
   { label: 'Payments', href: '/payments', icon: CreditCard },
+  { label: 'Expenses', href: '/expenses', icon: Wallet },
   { label: 'Contacts', href: '/contacts', icon: Users },
   { label: 'Reports', href: '/reports', icon: BarChart3 },
+  { label: 'Settings', href: '/settings', icon: Settings2 },
   { label: 'Clinic', href: '/clinic', icon: Stethoscope },
 ]
 

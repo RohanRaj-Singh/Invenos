@@ -8,19 +8,22 @@ import {
   PackagePlus,
   ClipboardList,
   Plus,
+  RotateCcw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import StockBadge from './components/StockBadge'
+import CompletionBadge, { computeCompletionStatus } from './components/CompletionBadge'
 import InventoryTimeline from './components/InventoryTimeline'
+import AdjustStockDialog from './components/AdjustStockDialog'
 import {
   getProductById,
   getProductPurchases,
   getProductTransactions,
 } from '@/data/inventory'
 import { formatCurrency } from '@/data/dashboard'
-import { getStockDisplay } from '@/lib/inventory'
+import { getStockDisplay } from '@/lib/inventory-engine'
 import { calculateInventorySummary } from '@/lib/inventory-engine'
 import { cn } from '@/lib/utils'
 import type { Sale } from '@/types'
@@ -30,10 +33,13 @@ export default function ProductDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('overview')
+  const [showAdjust, setShowAdjust] = useState(false)
 
   const product = getProductById(id || '')
   const purchases = getProductPurchases(id || '')
   const sales = allSales.filter((s) => s.items.some((i) => i.productId === id))
+  const regularSales = sales.filter((s) => !s.invoiceNumber.startsWith('RET-'))
+  const returns = sales.filter((s) => s.invoiceNumber.startsWith('RET-'))
   const transactions = getProductTransactions(id || '')
   const invSummary = calculateInventorySummary(transactions)
 
@@ -63,6 +69,7 @@ export default function ProductDetailsPage() {
   const costPerBaseUnit = largestPkg ? largestPkg.purchasePrice / largestPkg.quantity : 0
   const margin = defaultSalePrice - costPerBaseUnit
   const marginPercent = defaultSalePrice > 0 ? ((defaultSalePrice - costPerBaseUnit) / defaultSalePrice) * 100 : 0
+  const completionStatus = computeCompletionStatus(product)
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
@@ -72,13 +79,13 @@ export default function ProductDetailsPage() {
           <span>Back to inventory</span>
         </button>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate(`/inventory/add?edit=${product.id}`)}>
             <ClipboardList className="size-3.5" />
             <span className="hidden sm:inline">Edit</span>
           </Button>
-          <Button size="sm" className="gap-1.5 shadow-sm">
+          <Button size="sm" className="gap-1.5 shadow-sm" onClick={() => setShowAdjust(true)}>
             <Plus className="size-3.5" />
-            <span className="hidden sm:inline">Add Stock</span>
+            <span className="hidden sm:inline">Adjust Stock</span>
           </Button>
         </div>
       </div>
@@ -90,7 +97,10 @@ export default function ProductDetailsPage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-3 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{product.name}</h1>
-            <StockBadge status={product.status} />
+            <div className="flex items-center gap-2">
+              <StockBadge status={product.status} />
+              <CompletionBadge product={product} />
+            </div>
           </div>
           <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground flex-wrap">
             <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{product.sku}</code>
@@ -118,7 +128,8 @@ export default function ProductDetailsPage() {
           {[
             { id: 'overview', label: 'Overview', icon: Package },
             { id: 'purchases', label: 'Purchases', icon: PackagePlus, count: purchases.length },
-            { id: 'sales', label: 'Sales', icon: ShoppingCart, count: sales.length },
+            { id: 'sales', label: 'Sales', icon: ShoppingCart, count: regularSales.length },
+            { id: 'returns', label: 'Returns', icon: RotateCcw, count: returns.length },
             { id: 'movements', label: 'Movement', icon: BarChart3, count: transactions.length },
           ].map((tab) => {
             const Icon = tab.icon
@@ -210,7 +221,13 @@ export default function ProductDetailsPage() {
                     </div>
                   ))}
                   {product.packaging.length === 0 && (
-                    <p className="text-xs text-muted-foreground">No packaging configured.</p>
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">No packaging configured.</p>
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/inventory/add?edit=${product.id}`)}>
+                        <Package className="size-3.5" />
+                        Add Packaging
+                      </Button>
+                    </div>
                   )}
 
                   {/* Stock equivalents */}
@@ -239,6 +256,14 @@ export default function ProductDetailsPage() {
                       <InfoRow label={`Sale / ${product.baseUnit}`} value={formatCurrency(defaultSalePrice)} />
                       <InfoRow label="Margin" value={`${Math.round(marginPercent)}%`} />
                     </>
+                  )}
+                  {!largestPkg && completionStatus === 'needs-pricing' && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">No pricing configured yet.</p>
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/inventory/add?edit=${product.id}`)}>
+                        Complete Pricing
+                      </Button>
+                    </div>
                   )}
                   {product.packaging.map((pkg, i) => (
                     <div key={i} className="flex items-center justify-between text-xs py-1">
@@ -282,10 +307,10 @@ export default function ProductDetailsPage() {
 
         {activeSection === 'sales' && (
           <div className="space-y-3">
-            {sales.length === 0 ? (
+            {regularSales.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground"><ShoppingCart className="size-8 text-muted-foreground/30 mb-2" /><span>No sale records for this product.</span></div>
             ) : (
-              sales.map((sale: Sale) => {
+              regularSales.map((sale: Sale) => {
                 const saleItem = sale.items.find((i) => i.productId === product.id)
                 if (!saleItem) return null
                 return (
@@ -312,12 +337,46 @@ export default function ProductDetailsPage() {
           </div>
         )}
 
+        {activeSection === 'returns' && (
+          <div className="space-y-3">
+            {returns.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground"><RotateCcw className="size-8 text-muted-foreground/30 mb-2" /><span>No returns for this product.</span></div>
+            ) : (
+              returns.map((ret: Sale) => {
+                const retItem = ret.items.find((i) => i.productId === product.id)
+                if (!retItem) return null
+                return (
+                  <Card key={ret.id} size="sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Return</Badge>
+                          <span className="text-sm font-medium">{ret.customerName || 'Walk-in Customer'}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{ret.date}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div><span className="text-muted-foreground">Returned: </span><span className="font-medium text-amber-600">{retItem.packagingQuantity} {retItem.packagingName}</span></div>
+                        <div><span className="text-muted-foreground">Qty in {product.baseUnit}s: </span><span className="font-medium text-amber-600">+{retItem.baseQuantity}</span></div>
+                        <div><span className="text-muted-foreground">Refund: </span><span className="font-semibold text-amber-600">{formatCurrency(retItem.total)}</span></div>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">Ref: {ret.invoiceNumber}</div>
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
+          </div>
+        )}
+
         {activeSection === 'movements' && (
           <div className="max-w-3xl">
             <InventoryTimeline transactions={transactions} />
           </div>
         )}
       </div>
+
+      <AdjustStockDialog productId={product.id} open={showAdjust} onOpenChange={setShowAdjust} />
     </div>
   )
 }

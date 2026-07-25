@@ -1,10 +1,20 @@
 export interface DashboardStats {
   todaySales: number
+  todaySaleReturns: number
+  netSales: number
+  todayPurchases: number
+  todayPurchaseReturns: number
+  netPurchases: number
   pendingPayments: number
   stockValue: number
   lowStockItems: number
   salesTrend: number
   paymentsTrend: number
+  refundsIssued: number
+  refundsReceived: number
+  todayExpenses: number
+  thisMonthExpenses: number
+  totalExpenses: number
 }
 
 export interface QuickAction {
@@ -18,7 +28,7 @@ export interface QuickAction {
 
 export interface ActivityEvent {
   id: string
-  type: 'sale' | 'payment' | 'patient' | 'purchase'
+  type: 'sale' | 'payment' | 'patient' | 'purchase' | 'return' | 'refund' | 'expense'
   title: string
   description: string
   timeAgo: string
@@ -31,6 +41,7 @@ export interface NavItem {
   href: string
   icon: string
   badge?: number
+  children?: { label: string; href: string }[]
 }
 
 export interface ModuleItem {
@@ -110,10 +121,16 @@ export interface Prescription {
   notes?: string; refillable: boolean
 }
 
+// ── Product Types (scalable, extensible) ──
+export type ProductType = 'simple' | 'composite'
+
 // ── Inventory Core ──
 export type StockStatus = 'in-stock' | 'low-stock' | 'out-of-stock'
+
+/** @deprecated Use unit IDs from the units domain instead. Kept for backward compat. */
 export type BaseUnit = 'Piece' | 'Gram' | 'KG' | 'ML' | 'Liter' | 'Tablet' | 'Capsule' | 'Bottle' | 'Meter' | 'Packet' | string
 
+/** @deprecated Use SellingUnit instead. Kept for backward compat during migration. */
 export interface PackagingConfig {
   name: string
   quantity: number            // how many base units this packaging contains
@@ -123,17 +140,87 @@ export interface PackagingConfig {
   sku?: string
 }
 
+/** @deprecated Use Ingredient instead. Kept for backward compat. */
+export interface ProductIngredient {
+  productId: string
+  quantity: number
+}
+
+// ── NEW: Purchase Config ──
+export interface PurchaseConfig {
+  /** Unit ID (e.g. 'carton', 'box', 'kg', 'meter') describing the purchase packaging. */
+  unitId: string
+  /** How many inventory/base units per purchase. */
+  quantity: number
+  /** Cost per purchase unit (Rs.). */
+  cost: number
+  /** Display name override (e.g. "50 KG Bag", "Carton of 100"). */
+  name?: string
+}
+
+// ── NEW: Selling Unit ──
+export interface SellingUnit {
+  id: string
+  /** Display name: "Strip", "1kg Pack", "500ml Bottle", "Single" */
+  name: string
+  /** References the inventory/base unit (e.g. 'capsule', 'g', 'ml'). */
+  unitId: string
+  /** How many inventory/base units this selling unit contains. */
+  quantity: number
+  /** Sale price for this selling unit (Rs.). */
+  salePrice: number
+  barcode?: string
+  sku?: string
+  /** Which selling unit shows first at POS. */
+  isDefault: boolean
+}
+
+// ── NEW: Ingredient (replaces ProductIngredient) ──
+export interface Ingredient {
+  productId: string
+  quantity: number
+  /** Unit ID for the ingredient quantity — can differ from ingredient product's base unit. */
+  unitId: string
+}
+
+// ── NEW: Product (updated model) ──
 export interface Product {
-  id: string; name: string; sku: string; barcode: string
-  category: string; description: string; image?: string
-  trackInventory: boolean
+  id: string
+  name: string
+  sku: string
+  barcode: string
+  category: string
+  description: string
+  image?: string
+  productType?: ProductType      // defaults to 'simple' when unset
+
+  // ── NEW FIELDS ──
+  /** The atomic unit for inventory tracking. Always required. References units domain. */
+  baseUnitId: string
+  /** How the business buys this product. Optional. */
+  purchaseConfig?: PurchaseConfig
+  /** How customers buy this product. At least 1 required. */
+  sellingUnits: SellingUnit[]
+  /** Ingredients for manufactured products. */
+  ingredients?: Ingredient[]
+
+  // ── OLD FIELDS (kept for backward compat during migration) ──
+  /** @deprecated Use baseUnitId instead. */
   baseUnit: BaseUnit
+  /** @deprecated Use sellingUnits instead. */
   packaging: PackagingConfig[]
+
+  // ── STOCK ──
+  trackInventory: boolean
   stockQuantity: number        // always in base units
   lowStockThreshold: number
   status: StockStatus
-  createdAt: string; updatedAt: string
-  supplier?: string; location?: string
+
+  // ── METADATA ──
+  supplier?: string
+  location?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface PackagingSuggestion {
@@ -178,6 +265,7 @@ export interface ProductCategory {
 // ── Cart / POS ──
 export interface CartItem {
   id: string; productId: string; name: string
+  sellingUnitId?: string         // references SellingUnit.id for accurate sale tracking
   packagingName: string
   packagingQuantity: number    // how many of the selected packaging
   baseUnitQuantity: number     // how many base units in 1 of this packaging (the quantity from PackagingConfig)
@@ -237,7 +325,7 @@ export type PaymentStatus = 'paid' | 'partial' | 'unpaid'
 
 export interface Sale {
   id: string; invoiceNumber: string; source: SaleSource; date: string
-  customerName?: string; patientId?: string
+  customerId?: string; customerName?: string; patientId?: string
   items: CartItem[]
   subtotal: number; discount: number; grandTotal: number
   amountPaid: number; outstandingBalance: number; paymentStatus: PaymentStatus
@@ -251,9 +339,113 @@ export interface Payment {
 
 export interface SaleSummary {
   id: string; invoiceNumber: string; source: SaleSource; date: string
-  customerName?: string; patientName?: string
+  customerId?: string; customerName?: string; patientName?: string
   itemCount: number; grandTotal: number
   amountPaid: number; outstandingBalance: number; paymentStatus: PaymentStatus
 }
 
 export interface VisitWithSale extends Visit { sale?: Sale }
+
+// ── Purchase Module ──
+
+export interface PurchaseBill {
+  id: string
+  invoiceRef: string
+  supplierId: string
+  supplierName: string
+  date: string
+  items: PurchaseBillItem[]
+  subtotal: number
+  totalAmount: number
+  amountPaid: number
+  outstandingBalance: number
+  paymentStatus: 'paid' | 'partial' | 'unpaid'
+  status: 'received' | 'pending'
+  notes?: string
+  createdBy: string
+  createdAt: string
+}
+
+export interface PurchaseBillItem {
+  id: string
+  productId: string
+  productName: string
+  baseUnitId: string
+  baseUnitName: string
+  purchasePackName: string
+  purchasePackQty: number      // base units per purchase pack (from purchaseConfig)
+  purchaseQuantity: number     // how many packs bought
+  unitCost: number             // cost per pack
+  totalCost: number            // unitCost × purchaseQuantity
+}
+
+// ── Return Module ──
+
+export interface ReturnItem {
+  originalLineId: string
+  productId: string
+  productName: string
+  unitName: string
+  originalQty: number
+  returnedQty: number
+  refundAmount: number
+  reason: string
+  condition: 'resellable' | 'damaged' | 'expired'
+  restock: boolean
+}
+
+export interface SaleReturn {
+  id: string
+  returnNumber: string
+  originalInvoice: string
+  originalSaleId: string
+  customerName: string
+  date: string
+  items: ReturnItem[]
+  totalRefund: number
+  refundMethod: string
+  createdBy: string
+}
+
+export interface PurchaseReturn {
+  id: string
+  returnNumber: string
+  originalInvoice: string
+  originalPurchaseId: string
+  supplierName: string
+  date: string
+  items: ReturnItem[]
+  totalRefund: number
+  refundMethod: string
+  createdBy: string
+}
+
+// ── Expense Module ──
+
+export interface ExpenseCategory {
+  id: string
+  name: string
+  description: string
+  color: string
+  icon: string
+  active: boolean
+  expenseCount: number
+  totalSpent: number
+  lastUsed: string | null
+}
+
+export interface Expense {
+  id: string
+  expenseNumber: string
+  date: string
+  categoryId: string
+  categoryName: string
+  amount: number
+  paidTo: string
+  paymentMethod: PaymentMethod
+  referenceNumber: string
+  notes: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string | null
+}

@@ -29,3 +29,4 @@ docs/
 .env
 .env.local
 .env.*.local
+graphify-out/*

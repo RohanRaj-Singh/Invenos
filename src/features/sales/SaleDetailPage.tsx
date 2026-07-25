@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Receipt, ExternalLink, Banknote } from 'lucide-react'
+import { usePermission } from '@/features/auth/PermissionGuard'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ArrowLeft, Receipt, ExternalLink, Banknote, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getSaleById, getSalePayments, getPatientName } from '@/data/sales'
+import { getReturnsForSale, getReturnedQtyForSaleItem } from '@/data/returns'
 import { mockVisits } from '@/data/clinic'
 import { mockContacts } from '@/data/contacts'
 import { formatCurrency } from '@/data/dashboard'
@@ -28,6 +30,7 @@ export default function SaleDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [showPayment, setShowPayment] = useState(false)
+  const canProcessReturn = usePermission('sales', 'processReturn')
   const sale = getSaleById(id || '')
 
   if (!sale) {
@@ -44,6 +47,7 @@ export default function SaleDetailPage() {
   }
 
   const payments = getSalePayments(sale.id)
+  const returns = getReturnsForSale(sale.id)
   const srcCfg = sourceConfig[sale.source]
   const pCfg = payCfg[sale.paymentStatus]
   const customerLabel = sale.customerName || (sale.patientId ? getPatientName(sale.patientId) : '—')
@@ -60,10 +64,18 @@ export default function SaleDetailPage() {
           <ArrowLeft className="size-4" />
           <span>Back to sales</span>
         </button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowPayment(true)}>
-          <Banknote className="size-3.5" />
-          Record Payment
-        </Button>
+        <div className="flex items-center gap-2">
+          {canProcessReturn && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate(`/returns/sale?ref=${sale.invoiceNumber}`)}>
+              <RotateCcw className="size-3.5" />
+              Return
+            </Button>
+          )}
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowPayment(true)}>
+              <Banknote className="size-3.5" />
+              Record Payment
+            </Button>
+        </div>
       </div>
 
       {/* Header */}
@@ -128,19 +140,36 @@ export default function SaleDetailPage() {
         <CardContent>
           <div className="space-y-1">
             <div className="grid grid-cols-12 gap-3 px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-              <div className="col-span-5">Product</div>
+              <div className="col-span-4">Product</div>
               <div className="col-span-2 text-right">Qty</div>
+              <div className="col-span-2 text-right">Returned</div>
               <div className="col-span-2 text-right">Price</div>
-              <div className="col-span-3 text-right">Total</div>
+              <div className="col-span-2 text-right">Total</div>
             </div>
-            {sale.items.map((item) => (
-              <div key={item.id} className="grid grid-cols-12 gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-sm">
-                <div className="col-span-5 font-medium text-foreground truncate">{item.name}</div>
-                <div className="col-span-2 text-right text-muted-foreground">{item.packagingQuantity} {item.packagingName}</div>
-                <div className="col-span-2 text-right text-muted-foreground">{formatCurrency(item.unitPrice)}</div>
-                <div className="col-span-3 text-right font-semibold">{formatCurrency(item.total)}</div>
-              </div>
-            ))}
+            {sale.items.map((item) => {
+              const returnedQty = getReturnedQtyForSaleItem(sale.id, item.productId)
+              return (
+                <div key={item.id} className={cn('grid grid-cols-12 gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-sm', returnedQty > 0 && 'bg-amber-50/30 dark:bg-amber-500/5')}>
+                  <div className="col-span-4 font-medium text-foreground truncate">{item.name}
+                    {returnedQty > 0 && (
+                      <span className="ml-2 text-[10px] text-amber-600 font-normal">
+                        ({item.packagingQuantity - returnedQty} returnable)
+                      </span>
+                    )}
+                  </div>
+                  <div className="col-span-2 text-right text-muted-foreground">{item.packagingQuantity} {item.packagingName}</div>
+                  <div className="col-span-2 text-right">
+                    {returnedQty > 0 ? (
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">{returnedQty} returned</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </div>
+                  <div className="col-span-2 text-right text-muted-foreground">{formatCurrency(item.unitPrice)}</div>
+                  <div className="col-span-2 text-right font-semibold">{formatCurrency(item.total)}</div>
+                </div>
+              )
+            })}
           </div>
           <div className="mt-3 pt-3 border-t border-border space-y-1">
             <div className="flex justify-between text-sm px-3">
@@ -160,6 +189,47 @@ export default function SaleDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Returns */}
+      {returns.length > 0 && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <RotateCcw className="size-4 text-amber-600" />
+              Returns ({returns.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {returns.map((ret) => (
+                <div key={ret.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center size-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 shrink-0">
+                      <RotateCcw className="size-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <Link to={`/sales/returns/${ret.returnNumber}`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                        {ret.returnNumber}
+                      </Link>
+                      <div className="text-xs text-muted-foreground">
+                        {ret.items.length} item{ret.items.length !== 1 ? 's' : ''} returned · {ret.date}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                      {formatCurrency(ret.totalRefund)}
+                    </span>
+                    <Link to={`/sales/returns/${ret.returnNumber}`} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                      View <ExternalLink className="size-3" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Payments */}
       <Card>
